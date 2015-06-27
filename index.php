@@ -31,38 +31,36 @@ fclose($file);
 	<body>
 		<button onclick="resetMoney();">Reset $$</button>
 		<button id="pause" onclick="pauseAll();">Pause</button>
-		<p>
-			<label><strong>Number display type</strong>: </label>
-			<input type="radio" name="numtype" checked value="0">Whole
-			<input type="radio" name="numtype" value="1">Rounded
-		</p>
+		<label><strong>Number display type</strong>: </label>
+		<input type="radio" name="numtype" checked value="0">Whole
+		<input type="radio" name="numtype" value="1">Rounded
 
 		<table>
 			<tr>
 				<td>$$</td>
-				<td id="money" data-val='<?php echo $data["money"]; ?>'><?php echo $data["money"]; ?></td>
+				<td id="money" data-val='0'>0</td>
+				<td>&#916;$$/sec</td>
+				<td id="delta-money">0</td>
 			</tr>
 		</table>
 
 		<hr>
 
 		<button class="override" onclick="overrideAmount();">Set amount</button>
-		<input class="override" type="text" value="0" />
+		<input class="override" type="number" value="0" />
 
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
 		<script type="text/javascript" src="string_math.js"></script>
 		<script type="text/javascript" src="string_fraction.js"></script>
 		<script type="text/javascript" src="string_math_shorthand.js"></script>
+		<script type="text/javascript" src="DataManager.js"></script>
 		<script type="text/javascript">
+			var dm = DataManager(<?php echo $data["money"]; ?>);
+
 			var pause = false;
-			var NumDisplayType = {
-				WHOLE: 0,
-				ROUNDED: 1
-			};
-			var numDispType = NumDisplayType.WHOLE;
 
 			function pauseAll(shouldPause){
-				if (typeof nextAmount === "boolean")
+				if (typeof shouldPause === "boolean")
 					pause = shouldPause;
 				if (pause){
 					pause = false;
@@ -75,72 +73,34 @@ fclose($file);
 			}
 
 			function overrideAmount(){
-				var nextAmount = $(".override[type=text]").val();
-				setMoney(nextAmount);
+				var nextAmount = $(".override[type=number]").val();
+				dm.set("money", nextAmount);
 			}
 
 			function resetMoney(){
-				setMoney(0);
-			}
-
-			function isNumber(num){
-				return /^\d+$/.test(num);
-			}
-
-			function roundedDisplay(amount){
-				if (amount.greaterOrEqual("1000")){
-					return amount.divide("1000", 1) + "k";
-				}
-
-				return amount;
-			}
-
-			function setMoney(amount, callback){
-				var displayAmount = amount || $("#money").data("val");
-
-				switch ( numDispType ){
-					case NumDisplayType.WHOLE:
-						break;
-					case NumDisplayType.ROUNDED:
-						displayAmount = roundedDisplay(displayAmount);
-						break;
-				}
-
-				if (!isNumber(amount)){
-					pauseAll(true);
-					alert("Amount: " + amount);
-				}
-				$("#money").text( displayAmount ).data("val", amount);
-
-				if (typeof callback === "function"){
-					callback(amount);
-				}
-			}
-			function getMoney(){
-				return $("#money").data("val");
+				dm.set("money",0);
 			}
 
 			setInterval(function(){
 				if (!pause){
-					var amount = getMoney() + "" || "0";
+					var amount = dm.get("money") || "0";
 					var change = "1";
 
-					setMoney(amount.add(change), function(nextAmount){
-
-					});
+					dm.set("money", amount.add(change));
+					$("#money").text( dm.display.get("money") ).data("val", dm.get("money"));
 				}
 			}, 100);
 
 			$("input[name='numtype']").change(function(){
 				if ($(this).is(":checked")){
-					numDispType = parseInt($(this).val());
+					dm.set("displayType", parseInt( $(this).val()) );
 				}
 			});
 
 			// Catch if leaving
 			window.onbeforeunload = function (e) {
 				var data = [
-					["money", isNumber(getMoney()) ? getMoney() : 0]
+					["money", dm.get("money")]
 				];
 				$.post("/save.php", {data:data}, function(response){
 					if (response != "0"){
@@ -154,7 +114,6 @@ fclose($file);
 				// if (e) {
 				// 	e.returnValue = message;
 				// }
-
 				// // For Safari
 				// return message;
 			};
