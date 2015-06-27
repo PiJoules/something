@@ -25,8 +25,8 @@ String.prototype.compare = function(b) {
 	return StringMath.compare(this, b);
 }
 
-String.prototype.divide = function(b) {
-	return StringMath.divide(this, b);
+String.prototype.divide = function(b,p) {
+	return StringMath.divide(this, b, p);
 }
 
 String.prototype.equal = function(b) {
