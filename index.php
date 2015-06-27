@@ -32,15 +32,17 @@ fclose($file);
 		<button onclick="resetMoney();">Reset $$</button>
 		<button id="pause" onclick="pauseAll();">Pause</button>
 		<label><strong>Number display type</strong>: </label>
-		<input type="radio" name="numtype" checked value="0">Whole
-		<input type="radio" name="numtype" value="1">Rounded
+		<input type="radio" name="numtype" <?php if($data["numtype"] == 0) echo "checked"; ?> value="0">Whole
+		<input type="radio" name="numtype" <?php if($data["numtype"] == 1) echo "checked"; ?> value="1">Rounded
 
 		<table>
 			<tr>
 				<td>$$</td>
-				<td id="money" data-val='0'>0</td>
+				<td id="money">...</td>
 				<td>&#916;$$/sec</td>
-				<td id="delta-money">0</td>
+				<td id="delta-money">...</td>
+				<td>Threat (%)</td>
+				<td id="threat">...</td>
 			</tr>
 		</table>
 
@@ -55,8 +57,12 @@ fclose($file);
 		<script type="text/javascript" src="string_math_shorthand.js"></script>
 		<script type="text/javascript" src="DataManager.js"></script>
 		<script type="text/javascript">
-			var dm = DataManager(<?php echo $data["money"]; ?>);
-
+			var dm = DataManager({
+				initAmount: <?php echo $data["money"]; ?> + "",
+				initDisplayType: <?php echo $data["numtype"]; ?>,
+				lastLogin: <?php echo $data["lastTime"]; ?> + "",
+				initRate: <?php echo $data["rate"]; ?> + "", // change in money/deltaTime (default 0.1s)
+			});
 			var pause = false;
 
 			function pauseAll(shouldPause){
@@ -87,7 +93,8 @@ fclose($file);
 					var change = "1";
 
 					dm.set("money", amount.add(change));
-					$("#money").text( dm.display.get("money") ).data("val", dm.get("money"));
+					$("#money").text( dm.display.get("money") );
+					$("#delta-money").text( dm.display.get("deltaMoney") );
 				}
 			}, 100);
 
@@ -100,7 +107,10 @@ fclose($file);
 			// Catch if leaving
 			window.onbeforeunload = function (e) {
 				var data = [
-					["money", dm.get("money")]
+					["money", dm.get("money")],
+					["numtype", dm.get("displayType")],
+					["lastTime", Date.now()],
+					["rate", "1"],
 				];
 				$.post("/save.php", {data:data}, function(response){
 					if (response != "0"){

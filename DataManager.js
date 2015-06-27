@@ -4,13 +4,24 @@ var NumDisplayType = {
 	ROUNDED: 1
 };
 
-var DataManager = function(initAmount, initDisplayType){
-	// May be settable or gettable
-	var amounts = {
-		money: (initAmount || 0) + "",
-		displayType: initDisplayType || NumDisplayType.WHOLE,
+var DataManager = function(params){
+	var defaultParams = {
+		initAmount: "0",
+		initDisplayType: NumDisplayType.WHOLE,
+		deltaTime: "0.1", // default to 100 ms
+		lastLogin: Date.now() + "",
+		initRate: "1",
 	};
-	// All gettable
+	$.extend(defaultParams, params || {});
+
+	// May be settable; all gettable
+	var amounts = {
+		money: (defaultParams.initAmount || 0) + "",
+		displayType: defaultParams.initDisplayType || NumDisplayType.WHOLE,
+		lastMoney: "0",
+		deltaTime: defaultParams.deltaTime,
+	};
+	// All gettable; only for values that will be displayed
 	var display = {
 		money: function(){
 			if (amounts.displayType === NumDisplayType.ROUNDED){
@@ -18,10 +29,14 @@ var DataManager = function(initAmount, initDisplayType){
 			}
 			return amounts.money;
 		},
+		deltaMoney: function(){
+			return amounts.money.subtract( amounts.lastMoney ).divide( amounts.deltaTime );
+		},
 	};
-	// Only settable
-	var canSet = {
+	// Only settable (key with function for how to set it as value)
+	var settable = {
 		money: function(val){
+			amounts.lastMoney = amounts.money;
 			amounts.money = val + "";
 		},
 		displayType: function(val){
@@ -37,6 +52,16 @@ var DataManager = function(initAmount, initDisplayType){
 		return amount;
 	}
 
+	/* Test for if a string is a number */
+	function isNumber(num){
+		return !isNaN(num);
+	}
+
+	/* Perform any initial calculations here */
+	var loginTimeDiff = (Date.now()+"").subtract(defaultParams.lastLogin).divide("1000",0).divide(amounts.deltaTime,0);
+	console.log(loginTimeDiff);
+	amounts.money = amounts.money.add( defaultParams.initRate.multiply(loginTimeDiff) );
+
 	return {
 		get: function(key){
 			if (key in amounts){
@@ -45,8 +70,19 @@ var DataManager = function(initAmount, initDisplayType){
 			return null;
 		},
 		set: function(key, val){
-			if (key in amounts && key in canSet){
-				amounts[key] = val;
+			if (key in settable){
+				settable[key](val);
+			}
+		},
+		add: function(key, change){
+			if (key in amounts && key in settable){
+				var amt = amounts[key];
+				if (typeof amt === "string" && isNumber(amt)){
+					settable[key]( amounts[key].add(change) );
+				}
+				else if (typeof amt === "number"){
+					settable[key]( amt+change );
+				}
 			}
 		},
 		display: {
