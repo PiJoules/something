@@ -51,6 +51,9 @@ fclose($file);
 			</tr>
 		</table>
 
+		<strong>Events</strong>
+		<ul id="events"></ul>
+
 		<hr>
 
 		<button class="override" onclick="overrideAmount();">Set amount</button>
@@ -67,7 +70,6 @@ fclose($file);
 				initDisplayType: <?php echo $data["numtype"]; ?>,
 				lastLogin: <?php echo $data["lastTime"]; ?> + "",
 				rateMultiplier: <?php echo $data["rateMultiplier"]; ?>,
-				initThreat: <?php echo $data["threat"]; ?> + "",
 			});
 			var pause = false;
 
@@ -102,6 +104,9 @@ fclose($file);
 					$("#money").text( dm.display.get("money") );
 					$("#delta-money").text( dm.display.get("deltaMoney") );
 					$("#threat").text( dm.get("threat") );
+					if (dm.get("lastEvent") !== ""){
+						$("#events").append("<li>" + dm.get("lastEvent") + " (" + dm.get("money").subtract( dm.get("lastMoney") ) + ")</li>");
+					}
 				}
 			}, 1000/parseInt(dm.get("rate")));
 
@@ -123,7 +128,6 @@ fclose($file);
 					["numtype", dm.get("displayType")],
 					["lastTime", Date.now()],
 					["rateMultiplier", dm.get("rateMultiplier")],
-					["threat", dm.get("threat")],
 				];
 				$.post("/save.php", {data:data}, function(response){
 					if (response != "0"){

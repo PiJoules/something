@@ -9,13 +9,16 @@ var RateMultiplier = {
 	TIMES4: 2,
 };
 
+var randomEvents = [
+	"Money has spontaneously combusted in your wallet."
+];
+
 var DataManager = function(params){
 	var defaultParams = {
 		initAmount: "0",
 		initDisplayType: NumDisplayType.WHOLE,
 		lastLogin: Date.now() + "",
 		initRate: "10",
-		initThreat: "0.00",
 		rateMultiplier: RateMultiplier.TIMES1,
 	};
 	$.extend(defaultParams, params || {});
@@ -28,7 +31,8 @@ var DataManager = function(params){
 		deltaTime: "1".divide( defaultParams.initRate.multiply( getMultiplier(defaultParams.rateMultiplier) ) ),
 		rate: defaultParams.initRate,
 		rateMultiplier: defaultParams.rateMultiplier,
-		threat: defaultParams.initThreat,
+		threat: getTotalThreat,
+		lastEvent: "",
 	};
 	// All gettable; only for values that will be displayed
 	var display = {
@@ -60,6 +64,16 @@ var DataManager = function(params){
 		money: function(change){
 			amounts.lastMoney = amounts.money;
 			amounts.money = amounts.money.add( change.multiply( getMultiplier( amounts.rateMultiplier ) ) );
+			amounts.lastEvent = "";
+
+			if (++counter > counterMax){
+				var threatPercentage = getTotalThreat()/100;
+				if (Math.random() < threatPercentage){
+					amounts.money = amounts.money.subtract("1000");
+					amounts.lastEvent = randomEvents[Math.floor(Math.random()*randomEvents.length)];
+				}
+				counter = 0;
+			}
 		},
 	};
 
@@ -90,9 +104,28 @@ var DataManager = function(params){
 		return !isNaN(num);
 	}
 
+	/* Computing the total threat */
+	function getTotalThreat(){
+		var total = 0;
+		/* Rate multiplier */
+		switch ( (amounts || defaultParams).rateMultiplier ){
+			case RateMultiplier.TIMES1:
+				break;
+			case RateMultiplier.TIMES2:
+				total += 10;
+				break;
+			case RateMultiplier.TIMES4:
+				total += 20;
+				break;
+		}
+		return total;
+	}
+
 	/* Perform any initial calculations here */
 	var loginTimeDiff = (Date.now()+"").subtract(defaultParams.lastLogin).divide("1000",0);
 	amounts.money = amounts.money.add( loginTimeDiff.divide(amounts.deltaTime) );
+	var counter = 0; // Perform something on every money addition
+	var counterMax = 10;
 
 	return {
 		get: function(key){
@@ -114,7 +147,7 @@ var DataManager = function(params){
 		display: {
 			get: function(key){
 				if (key in display){
-					return display[key];
+					return display[key]();
 				}
 				return null;
 			} 
