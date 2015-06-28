@@ -3,14 +3,20 @@ var NumDisplayType = {
 	WHOLE: 0,
 	ROUNDED: 1
 };
+var RateMultiplier = {
+	TIMES1: 0,
+	TIMES2: 1,
+	TIMES4: 2,
+};
 
 var DataManager = function(params){
 	var defaultParams = {
 		initAmount: "0",
 		initDisplayType: NumDisplayType.WHOLE,
-		deltaTime: "0.1", // default to 100 ms
 		lastLogin: Date.now() + "",
-		initRate: "1",
+		initRate: "10",
+		initThreat: "0.00",
+		rateMultiplier: RateMultiplier.TIMES1,
 	};
 	$.extend(defaultParams, params || {});
 
@@ -19,7 +25,10 @@ var DataManager = function(params){
 		money: (defaultParams.initAmount || 0) + "",
 		displayType: defaultParams.initDisplayType || NumDisplayType.WHOLE,
 		lastMoney: "0",
-		deltaTime: defaultParams.deltaTime,
+		deltaTime: "1".divide( defaultParams.initRate.multiply( getMultiplier(defaultParams.rateMultiplier) ) ),
+		rate: defaultParams.initRate,
+		rateMultiplier: defaultParams.rateMultiplier,
+		threat: defaultParams.initThreat,
 	};
 	// All gettable; only for values that will be displayed
 	var display = {
@@ -30,7 +39,7 @@ var DataManager = function(params){
 			return amounts.money;
 		},
 		deltaMoney: function(){
-			return amounts.money.subtract( amounts.lastMoney ).divide( amounts.deltaTime );
+			return amounts.money.subtract( amounts.lastMoney ).multiply( amounts.rate );
 		},
 	};
 	// Only settable (key with function for how to set it as value)
@@ -42,6 +51,16 @@ var DataManager = function(params){
 		displayType: function(val){
 			amounts.displayType = val;
 		},
+		rateMultiplier: function(val){
+			amounts.rateMultiplier = val;
+			amounts.deltaTime = "1".divide( defaultParams.initRate.multiply( getMultiplier(val) ) );
+		},
+	};
+	var addable = {
+		money: function(change){
+			amounts.lastMoney = amounts.money;
+			amounts.money = amounts.money.add( change.multiply( getMultiplier( amounts.rateMultiplier ) ) );
+		},
 	};
 
 	/* Round a function to the nearest power of 1000 */
@@ -52,15 +71,28 @@ var DataManager = function(params){
 		return amount;
 	}
 
+	/* Get the actual multiplication value from the enum */
+	function getMultiplier(val){
+		switch (val){
+			case RateMultiplier.TIMES1:
+				return "1";
+			case RateMultiplier.TIMES2:
+				return "2";
+			case RateMultiplier.TIMES4:
+				return "4";
+			default:
+				return "1";
+		}
+	}
+
 	/* Test for if a string is a number */
 	function isNumber(num){
 		return !isNaN(num);
 	}
 
 	/* Perform any initial calculations here */
-	var loginTimeDiff = (Date.now()+"").subtract(defaultParams.lastLogin).divide("1000",0).divide(amounts.deltaTime,0);
-	console.log(loginTimeDiff);
-	amounts.money = amounts.money.add( defaultParams.initRate.multiply(loginTimeDiff) );
+	var loginTimeDiff = (Date.now()+"").subtract(defaultParams.lastLogin).divide("1000",0);
+	amounts.money = amounts.money.add( loginTimeDiff.divide(amounts.deltaTime) );
 
 	return {
 		get: function(key){
@@ -75,14 +107,8 @@ var DataManager = function(params){
 			}
 		},
 		add: function(key, change){
-			if (key in amounts && key in settable){
-				var amt = amounts[key];
-				if (typeof amt === "string" && isNumber(amt)){
-					settable[key]( amounts[key].add(change) );
-				}
-				else if (typeof amt === "number"){
-					settable[key]( amt+change );
-				}
+			if (key in amounts && key in addable){
+				addable[key](change);
 			}
 		},
 		display: {

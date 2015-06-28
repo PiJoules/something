@@ -34,6 +34,11 @@ fclose($file);
 		<label><strong>Number display type</strong>: </label>
 		<input type="radio" name="numtype" <?php if($data["numtype"] == 0) echo "checked"; ?> value="0">Whole
 		<input type="radio" name="numtype" <?php if($data["numtype"] == 1) echo "checked"; ?> value="1">Rounded
+		|
+		<label><strong>Speed</strong>: </label>
+		<input type="radio" name="rateMultiplier" <?php if($data["rateMultiplier"] == 0) echo "checked"; ?> value="0" />x1
+		<input type="radio" name="rateMultiplier" <?php if($data["rateMultiplier"] == 1) echo "checked"; ?> value="1" />x2
+		<input type="radio" name="rateMultiplier" <?php if($data["rateMultiplier"] == 2) echo "checked"; ?> value="2" />x4
 
 		<table>
 			<tr>
@@ -61,7 +66,8 @@ fclose($file);
 				initAmount: <?php echo $data["money"]; ?> + "",
 				initDisplayType: <?php echo $data["numtype"]; ?>,
 				lastLogin: <?php echo $data["lastTime"]; ?> + "",
-				initRate: <?php echo $data["rate"]; ?> + "", // change in money/deltaTime (default 0.1s)
+				rateMultiplier: <?php echo $data["rateMultiplier"]; ?>,
+				initThreat: <?php echo $data["threat"]; ?> + "",
 			});
 			var pause = false;
 
@@ -92,15 +98,21 @@ fclose($file);
 					var amount = dm.get("money") || "0";
 					var change = "1";
 
-					dm.set("money", amount.add(change));
+					dm.add("money", change);
 					$("#money").text( dm.display.get("money") );
 					$("#delta-money").text( dm.display.get("deltaMoney") );
+					$("#threat").text( dm.get("threat") );
 				}
-			}, 100);
+			}, 1000/parseInt(dm.get("rate")));
 
 			$("input[name='numtype']").change(function(){
 				if ($(this).is(":checked")){
 					dm.set("displayType", parseInt( $(this).val()) );
+				}
+			});
+			$("input[name='rateMultiplier']").change(function(){
+				if ($(this).is(":checked")){
+					dm.set("rateMultiplier", parseInt( $(this).val()) );
 				}
 			});
 
@@ -110,7 +122,8 @@ fclose($file);
 					["money", dm.get("money")],
 					["numtype", dm.get("displayType")],
 					["lastTime", Date.now()],
-					["rate", "1"],
+					["rateMultiplier", dm.get("rateMultiplier")],
+					["threat", dm.get("threat")],
 				];
 				$.post("/save.php", {data:data}, function(response){
 					if (response != "0"){
